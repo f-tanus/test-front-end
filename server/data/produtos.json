@@ -1,0 +1,98 @@
+[
+  {
+    "_id": "030ad377-cfbe-426d-bc0b-cac0c2eea6b9",
+    "nome": "Mussarela",
+    "tipo": "Frescal",
+    "quantidade": 67,
+    "unidade": "kg",
+    "precoVenda": 32.9,
+    "custoProducao": 18.5,
+    "status": "ativo",
+    "createdAt": "2026-05-13T01:57:30.124Z",
+    "updatedAt": "2026-05-13T02:22:46.585Z"
+  },
+  {
+    "_id": "a28f2b6c-d8c1-491c-96d3-c0ed0ebc7196",
+    "nome": "Prato",
+    "tipo": "Frescal",
+    "quantidade": 43,
+    "unidade": "kg",
+    "precoVenda": 28.5,
+    "custoProducao": 16,
+    "status": "ativo",
+    "createdAt": "2026-05-13T01:57:30.124Z",
+    "updatedAt": "2026-05-13T02:22:46.586Z"
+  },
+  {
+    "_id": "306354b1-2cfd-4b39-84b7-6315779a757d",
+    "nome": "Parmesão",
+    "tipo": "Curado",
+    "quantidade": 30,
+    "unidade": "kg",
+    "precoVenda": 58.9,
+    "custoProducao": 35,
+    "status": "ativo",
+    "createdAt": "2026-05-13T01:57:30.124Z",
+    "updatedAt": "2026-05-13T02:22:07.381Z"
+  },
+  {
+    "_id": "c8a41cd3-1ec8-4ac8-8247-d637efea21dc",
+    "nome": "Gorgonzola",
+    "tipo": "Azul",
+    "quantidade": 12,
+    "unidade": "kg",
+    "precoVenda": 65,
+    "custoProducao": 38,
+    "status": "ativo",
+    "createdAt": "2026-05-13T01:57:30.124Z",
+    "updatedAt": "2026-05-13T02:23:32.936Z"
+  },
+  {
+    "_id": "0ac035ab-fd1a-47ce-98e4-ed04a021842a",
+    "nome": "Ricota",
+    "tipo": "Frescal",
+    "quantidade": 40,
+    "unidade": "kg",
+    "precoVenda": 22,
+    "custoProducao": 10,
+    "status": "ativo",
+    "createdAt": "2026-05-13T01:57:30.124Z",
+    "updatedAt": "2026-05-13T01:57:30.136Z"
+  },
+  {
+    "_id": "69a1b56d-f807-40ba-8b47-cd70c860b6e2",
+    "nome": "Brie",
+    "tipo": "Macio",
+    "quantidade": 15,
+    "unidade": "kg",
+    "precoVenda": 85,
+    "custoProducao": 48,
+    "status": "inativo",
+    "createdAt": "2026-05-13T01:57:30.124Z",
+    "updatedAt": "2026-05-13T01:57:30.124Z"
+  },
+  {
+    "_id": "c90d3187-9634-43c3-8ff3-af7f3e9dc47e",
+    "nome": "Provolone",
+    "tipo": "Curado",
+    "quantidade": 22,
+    "unidade": "kg",
+    "precoVenda": 45,
+    "custoProducao": 25,
+    "status": "ativo",
+    "createdAt": "2026-05-13T01:57:30.124Z",
+    "updatedAt": "2026-05-13T02:22:07.381Z"
+  },
+  {
+    "_id": "13dbad2d-dcab-46b7-81f9-78be6972fb17",
+    "nome": "Requeijão",
+    "tipo": "Processado",
+    "quantidade": 40,
+    "unidade": "un",
+    "precoVenda": 12.5,
+    "custoProducao": 5.8,
+    "status": "ativo",
+    "createdAt": "2026-05-13T01:57:30.124Z",
+    "updatedAt": "2026-05-13T02:22:46.586Z"
+  }
+]
