@@ -1,9 +1,11 @@
 /* =======================================
    QUEIJARIA CORP - SPA Router
+   With auto-refresh and page lifecycle
    ======================================= */
 
 const Router = {
     currentRoute: null,
+    currentPage: null,
 
     init: function() {
         var self = this;
@@ -44,6 +46,13 @@ const Router = {
                 overlay.classList.remove('active');
             });
         }
+        // Refresh button
+        var refreshBtn = document.getElementById('btn-refresh');
+        if (refreshBtn) {
+            refreshBtn.addEventListener('click', function() {
+                self.refresh();
+            });
+        }
         // Initial navigation
         var hash = window.location.hash || '#/';
         this.navigate(hash);
@@ -53,10 +62,35 @@ const Router = {
         window.location.hash = '#/' + route;
     },
 
+    /**
+     * Refresh the current page (re-fetches data from API)
+     */
+    refresh: function() {
+        var route = this.currentRoute || 'dashboard';
+        this.navigate('#/' + route);
+    },
+
+    /**
+     * Destroy current page lifecycle
+     */
+    destroyPage: function() {
+        if (this.currentPage && typeof this.currentPage.destroy === 'function') {
+            this.currentPage.destroy();
+        }
+        // Destroy any Chart.js instances
+        if (typeof Chart !== 'undefined' && Chart.instances) {
+            Object.values(Chart.instances).forEach(function(c) {
+                try { c.destroy(); } catch (e) {}
+            });
+        }
+    },
+
     navigate: function(hash) {
-        // Parse route
         var route = hash.replace('#/', '').replace('#', '') || 'dashboard';
-        route = route.split('/')[0]; // handle sub-routes
+        route = route.split('/')[0];
+
+        // Destroy previous page lifecycle
+        this.destroyPage();
 
         // Update active nav class
         document.querySelectorAll('[data-route]').forEach(function(el) {
@@ -86,23 +120,30 @@ const Router = {
         setTimeout(function() {
             wrapper.innerHTML = '';
             self.currentRoute = route;
+
             switch (route) {
                 case 'dashboard':
+                    self.currentPage = DashboardPage;
                     DashboardPage.render();
                     break;
                 case 'produtos':
+                    self.currentPage = ProdutosPage;
                     ProdutosPage.render();
                     break;
                 case 'materiais':
+                    self.currentPage = MateriaisPage;
                     MateriaisPage.render();
                     break;
                 case 'vendas':
+                    self.currentPage = VendasPage;
                     VendasPage.render();
                     break;
                 case 'relatorios':
+                    self.currentPage = null;
                     self.renderRelatorios(wrapper);
                     break;
                 default:
+                    self.currentPage = DashboardPage;
                     DashboardPage.render();
                     break;
             }

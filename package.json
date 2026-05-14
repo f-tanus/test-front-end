@@ -1,0 +1,17 @@
+{
+    "name": "queijaria-corp",
+    "version": "1.0.0",
+    "description": "Queijaria Corp - Gestão de Vendas & Materiais (Cheese Production Business Management)",
+    "private": true,
+    "scripts": {
+        "start": "cd backend && npm start",
+        "seed": "cd backend && npm run seed",
+        "install": "cd backend && npm install"
+    },
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/f-tanus/test-front-end.git"
+    },
+    "keywords": ["queijaria", "cheese", "management", "inventory"],
+    "license": "MIT"
+}
