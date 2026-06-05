@@ -34,7 +34,52 @@ body {
     min-height: 100vh;
 }
 
-/* Sidebar */
+/* ===================== Mobile Menu Button ===================== */
+
+.mobile-menu-btn {
+    display: none;
+    position: fixed;
+    top: 1rem;
+    left: 1rem;
+    z-index: 200;
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    background: var(--sidebar-bg);
+    color: var(--primary);
+    border: none;
+    font-size: 1.3rem;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.2s;
+}
+
+.mobile-menu-btn:active {
+    transform: scale(0.95);
+}
+
+.sidebar-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0,0,0,0.5);
+    z-index: 150;
+    opacity: 0;
+    transition: opacity 0.3s;
+}
+
+.sidebar-overlay.active {
+    display: block;
+    opacity: 1;
+}
+
+/* ===================== Sidebar ===================== */
+
 .sidebar {
     width: 260px;
     background: var(--sidebar-bg);
@@ -44,7 +89,8 @@ body {
     left: 0;
     height: 100vh;
     overflow-y: auto;
-    z-index: 100;
+    z-index: 160;
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .sidebar-header {
@@ -94,7 +140,8 @@ body {
     text-align: center;
 }
 
-/* Main Content */
+/* ===================== Main Content ===================== */
+
 .main-content {
     margin-left: 260px;
     flex: 1;
@@ -142,6 +189,8 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    flex-wrap: wrap;
+    gap: 0.5rem;
 }
 
 .card-header h3, .card-header h4 {
@@ -234,6 +283,7 @@ body {
 /* Tables */
 .table-responsive {
     overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
 }
 
 .table {
@@ -362,6 +412,7 @@ body {
 .form-group {
     margin-bottom: 1rem;
     flex: 1;
+    min-width: 0;
 }
 
 .form-group label {
@@ -519,7 +570,7 @@ canvas {
     flex-direction: column;
     gap: 0.75rem;
     max-width: 420px;
-    width: 100%;
+    width: calc(100% - 2rem);
     pointer-events: none;
 }
 
@@ -650,25 +701,113 @@ canvas {
     font-size: 1rem;
 }
 
-/* Responsive */
+/* ===================== Responsive: Mobile ===================== */
+
 @media (max-width: 768px) {
-    .sidebar {
-        width: 100%;
-        height: auto;
-        position: relative;
+    /* Show hamburger menu */
+    .mobile-menu-btn {
+        display: flex;
     }
-    
+
+    /* Sidebar: hidden by default, slide in from left */
+    .sidebar {
+        width: 280px;
+        height: 100vh;
+        position: fixed;
+        top: 0;
+        left: 0;
+        transform: translateX(-100%);
+        z-index: 160;
+    }
+
+    .sidebar.open {
+        transform: translateX(0);
+    }
+
+    /* Main content: full width, add top padding for hamburger */
     .main-content {
         margin-left: 0;
         max-width: 100%;
-        padding: 1rem;
+        padding: 4rem 1rem 1.5rem 1rem;
     }
-    
+
+    /* Stats grid: 2 columns */
     .stats-grid {
         grid-template-columns: repeat(2, 1fr);
     }
-    
+
+    /* Form rows: stack vertically */
     .form-row {
         flex-direction: column;
+        gap: 0;
+    }
+
+    /* Tables: compact on mobile */
+    .table th, .table td {
+        padding: 0.5rem 0.6rem;
+        font-size: 0.8rem;
+    }
+
+    /* Buttons: wrap on mobile */
+    .btn-group {
+        flex-wrap: wrap;
+    }
+
+    /* Page header: stack */
+    .page-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    /* Card body: reduce padding */
+    .card-body {
+        padding: 1rem;
+    }
+
+    /* Modal: full screen on mobile */
+    .modal {
+        padding: 1rem;
+    }
+
+    .modal-content {
+        margin-top: 0.5rem;
+    }
+
+    .modal form {
+        padding: 1rem;
+    }
+
+    /* Filter row */
+    .table-toolbar, .filter-row {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    .table-toolbar input,
+    .table-toolbar select,
+    .filter-row input,
+    .filter-row select {
+        min-width: 0;
+        width: 100%;
+    }
+
+    /* Dashboard grid */
+    .dashboard-grid {
+        gap: 1rem;
+    }
+}
+
+/* Very small screens */
+@media (max-width: 400px) {
+    .stats-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .stat-card {
+        padding: 1rem;
+    }
+
+    .page-header h1 {
+        font-size: 1.4rem;
     }
 }
