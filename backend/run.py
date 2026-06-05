@@ -14,7 +14,7 @@ import uvicorn
 if __name__ == "__main__":
     print("""
     ╔══════════════════════════════════════════╗
-    ║     RuralSys - Sistema de Gestão Rural   ║
+    ║   Saudade da Roça - Gestão Rural         ║
     ║                                          ║
     ║   Ensure PostgreSQL is running and       ║
     ║   DATABASE_URL is set in backend/.env    ║
