@@ -1,0 +1,23 @@
+# Render.com Blueprint deployment configuration
+# https://render.com/docs/blueprint-spec
+
+services:
+  # Web service
+  - type: web
+    name: rural-sys
+    env: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    envVars:
+      - key: DATABASE_URI
+        fromDatabase:
+          name: rural-sys-db
+          property: connectionString
+      - key: SECRET_KEY
+        generateValue: true
+
+  # PostgreSQL database
+  - type: postgresql
+    name: rural-sys-db
+    database: rural_products_db
+    plan: free
