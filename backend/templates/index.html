@@ -1,0 +1,249 @@
+{% extends "base.html" %}
+{% block title %}Dashboard - RuralSys{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1><i class="fas fa-chart-pie"></i> Dashboard</h1>
+    <p class="subtitle">Visão geral do sistema</p>
+</div>
+
+<div class="stats-grid" id="summaryStats">
+    <div class="stat-card">
+        <div class="stat-icon revenue"><i class="fas fa-dollar-sign"></i></div>
+        <div class="stat-info">
+            <span class="stat-label">Receita Total</span>
+            <span class="stat-value" id="totalRevenue">R$ 0,00</span>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon paid"><i class="fas fa-check-circle"></i></div>
+        <div class="stat-info">
+            <span class="stat-label">Recebido</span>
+            <span class="stat-value" id="totalPaid">R$ 0,00</span>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon pending"><i class="fas fa-clock"></i></div>
+        <div class="stat-info">
+            <span class="stat-label">Pendente</span>
+            <span class="stat-value" id="totalPending">R$ 0,00</span>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon sales"><i class="fas fa-shopping-cart"></i></div>
+        <div class="stat-info">
+            <span class="stat-label">Total Vendas</span>
+            <span class="stat-value" id="totalSales">0</span>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon customers"><i class="fas fa-users"></i></div>
+        <div class="stat-info">
+            <span class="stat-label">Clientes</span>
+            <span class="stat-value" id="totalCustomers">0</span>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon products"><i class="fas fa-box"></i></div>
+        <div class="stat-info">
+            <span class="stat-label">Produtos</span>
+            <span class="stat-value" id="totalProducts">0</span>
+        </div>
+    </div>
+</div>
+
+<div class="dashboard-grid">
+    <div class="card">
+        <div class="card-header">
+            <h3><i class="fas fa-chart-line"></i> Receita por Período</h3>
+        </div>
+        <div class="card-body">
+            <div class="filter-row">
+                <select id="revenuePeriod" onchange="loadRevenueByPeriod()">
+                    <option value="day">Diário</option>
+                    <option value="week">Semanal</option>
+                    <option value="month" selected>Mensal</option>
+                    <option value="year">Anual</option>
+                </select>
+            </div>
+            <canvas id="revenueChart" height="250"></canvas>
+        </div>
+    </div>
+    <div class="card">
+        <div class="card-header">
+            <h3><i class="fas fa-credit-card"></i> Métodos de Pagamento</h3>
+        </div>
+        <div class="card-body">
+            <canvas id="paymentChart" height="250"></canvas>
+            <div id="paymentLegend" class="chart-legend"></div>
+        </div>
+    </div>
+</div>
+
+<div class="dashboard-grid">
+    <div class="card">
+        <div class="card-header">
+            <h3><i class="fas fa-trophy"></i> Top Clientes</h3>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table" id="topCustomersTable">
+                    <thead>
+                        <tr>
+                            <th>Cliente</th>
+                            <th>Compras</th>
+                            <th>Total Gasto</th>
+                            <th>Última Compra</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div class="card">
+        <div class="card-header">
+            <h3><i class="fas fa-star"></i> Produtos Mais Vendidos</h3>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table" id="topProductsTable">
+                    <thead>
+                        <tr>
+                            <th>Produto</th>
+                            <th>Qtd Vendida</th>
+                            <th>Receita</th>
+                            <th>Margem</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+async function loadSummary() {
+    const res = await fetch('/api/finance/summary');
+    const data = await res.json();
+    document.getElementById('totalRevenue').textContent = 'R$ ' + data.total_revenue.toFixed(2).replace('.', ',');
+    document.getElementById('totalPaid').textContent = 'R$ ' + data.total_paid.toFixed(2).replace('.', ',');
+    document.getElementById('totalPending').textContent = 'R$ ' + data.total_pending.toFixed(2).replace('.', ',');
+    document.getElementById('totalSales').textContent = data.total_sales;
+    document.getElementById('totalCustomers').textContent = data.total_customers;
+    document.getElementById('totalProducts').textContent = data.total_products;
+}
+
+let revenueChart = null;
+async function loadRevenueByPeriod() {
+    const period = document.getElementById('revenuePeriod').value;
+    const res = await fetch(`/api/finance/revenue-by-period?period=${period}`);
+    const data = await res.json();
+    
+    const labels = data.map(d => {
+        const date = new Date(d.period + 'T00:00:00');
+        return date.toLocaleDateString('pt-BR');
+    });
+    const values = data.map(d => d.total);
+
+    if (revenueChart) revenueChart.destroy();
+    const ctx = document.getElementById('revenueChart').getContext('2d');
+    revenueChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Receita',
+                data: values,
+                backgroundColor: '#2ecc71',
+                borderRadius: 6,
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: { legend: { display: false } },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: { callback: v => 'R$ ' + v.toFixed(2).replace('.', ',') }
+                }
+            }
+        }
+    });
+}
+
+let paymentChart = null;
+async function loadPaymentMethods() {
+    const res = await fetch('/api/finance/payment-methods');
+    const data = await res.json();
+
+    const labels = data.map(d => {
+        const map = { cash: 'Dinheiro', credit_card: 'Cartão Crédito', debit_card: 'Cartão Débito', pix: 'PIX', transfer: 'Transferência', other: 'Outros' };
+        return map[d.payment_method] || d.payment_method;
+    });
+    const values = data.map(d => d.total);
+    const colors = ['#2ecc71', '#3498db', '#e74c3c', '#f39c12', '#9b59b6', '#1abc9c'];
+
+    if (paymentChart) paymentChart.destroy();
+    const ctx = document.getElementById('paymentChart').getContext('2d');
+    paymentChart = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: labels,
+            datasets: [{
+                data: values,
+                backgroundColor: colors.slice(0, labels.length),
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: { legend: { display: false } }
+        }
+    });
+
+    const legend = document.getElementById('paymentLegend');
+    legend.innerHTML = labels.map((l, i) =>
+        `<span class="legend-item"><span class="legend-color" style="background:${colors[i]}"></span>${l}</span>`
+    ).join('');
+}
+
+async function loadTopCustomers() {
+    const res = await fetch('/api/finance/customer-report?min_purchases=1');
+    const data = await res.json();
+    const tbody = document.querySelector('#topCustomersTable tbody');
+    tbody.innerHTML = data.slice(0, 5).map(c =>
+        `<tr>
+            <td>${c.customer_name}</td>
+            <td>${c.total_sales}</td>
+            <td>R$ ${c.total_spent.toFixed(2).replace('.', ',')}</td>
+            <td>${c.last_purchase ? new Date(c.last_purchase + 'T00:00:00').toLocaleDateString('pt-BR') : '-'}</td>
+        </tr>`
+    ).join('');
+}
+
+async function loadTopProducts() {
+    const res = await fetch('/api/finance/product-performance');
+    const data = await res.json();
+    const tbody = document.querySelector('#topProductsTable tbody');
+    tbody.innerHTML = data.slice(0, 5).map(p =>
+        `<tr>
+            <td>${p.product_name}</td>
+            <td>${p.total_sold}</td>
+            <td>R$ ${p.total_revenue.toFixed(2).replace('.', ',')}</td>
+            <td>${p.profit_margin !== null ? p.profit_margin.toFixed(1) + '%' : '-'}</td>
+        </tr>`
+    ).join('');
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    loadSummary();
+    loadRevenueByPeriod();
+    loadPaymentMethods();
+    loadTopCustomers();
+    loadTopProducts();
+});
+</script>
+{% endblock %}

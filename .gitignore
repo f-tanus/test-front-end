@@ -1,32 +1,4 @@
-# Node
-node_modules/
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-
-# Environment
-.env
-.env.local
-.env.*.local
-
-# IDE
-.vscode/
-.idea/
-*.swp
-*.swo
-*~
-
-# OS
-.DS_Store
-Thumbs.db
-*.log
-
-# Build
-dist/
-build/
-
-# Backend data (restored by seed)
-backend/data/*.json
-
-# Backend
-backend/node_modules/
+*.env
+.env.*
+pycache__/
+__pycache__/

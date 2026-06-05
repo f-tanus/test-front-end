@@ -1,0 +1,319 @@
+{% extends "base.html" %}
+{% block title %}Financeiro - RuralSys{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1><i class="fas fa-dollar-sign"></i> Financeiro</h1>
+    <div class="btn-group">
+        <button class="btn btn-secondary" onclick="generateReport('pdf')"><i class="fas fa-file-pdf"></i> Exportar PDF</button>
+        <button class="btn btn-secondary" onclick="generateReport('csv')"><i class="fas fa-file-csv"></i> Exportar CSV</button>
+    </div>
+</div>
+
+<!-- Date Filters -->
+<div class="card">
+    <div class="card-body">
+        <div class="filter-row">
+            <div class="form-group">
+                <label>Data Início</label>
+                <input type="date" id="startDate" class="form-control">
+            </div>
+            <div class="form-group">
+                <label>Data Fim</label>
+                <input type="date" id="endDate" class="form-control">
+            </div>
+            <button class="btn btn-primary" onclick="loadFinanceData()" style="margin-top: 1.5rem;">
+                <i class="fas fa-filter"></i> Filtrar
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Summary Cards -->
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-icon revenue"><i class="fas fa-arrow-up"></i></div>
+        <div class="stat-info">
+            <span class="stat-label">Receita Total</span>
+            <span class="stat-value" id="finTotalRevenue">R$ 0,00</span>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon paid"><i class="fas fa-check-circle"></i></div>
+        <div class="stat-info">
+            <span class="stat-label">Recebido</span>
+            <span class="stat-value" id="finTotalPaid">R$ 0,00</span>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon pending"><i class="fas fa-clock"></i></div>
+        <div class="stat-info">
+            <span class="stat-label">A Receber</span>
+            <span class="stat-value" id="finTotalPending">R$ 0,00</span>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon bad"><i class="fas fa-times-circle"></i></div>
+        <div class="stat-info">
+            <span class="stat-label">Cancelado</span>
+            <span class="stat-value" id="finTotalCancelled">R$ 0,00</span>
+        </div>
+    </div>
+</div>
+
+<div class="dashboard-grid">
+    <div class="card">
+        <div class="card-header">
+            <h3><i class="fas fa-chart-bar"></i> Receita por Período</h3>
+        </div>
+        <div class="card-body">
+            <div class="filter-row">
+                <select id="finPeriod" onchange="loadRevenueChart()">
+                    <option value="day">Diário</option>
+                    <option value="week">Semanal</option>
+                    <option value="month" selected>Mensal</option>
+                    <option value="year">Anual</option>
+                </select>
+            </div>
+            <canvas id="financeRevenueChart" height="250"></canvas>
+        </div>
+    </div>
+    <div class="card">
+        <div class="card-header">
+            <h3><i class="fas fa-chart-pie"></i> Formas de Pagamento</h3>
+        </div>
+        <div class="card-body">
+            <canvas id="financePaymentChart" height="250"></canvas>
+            <div id="financePaymentLegend" class="chart-legend"></div>
+        </div>
+    </div>
+</div>
+
+<div class="dashboard-grid">
+    <div class="card">
+        <div class="card-header">
+            <h3><i class="fas fa-trophy"></i> Relatório de Clientes</h3>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table" id="customerReportTable">
+                    <thead>
+                        <tr>
+                            <th>Cliente</th>
+                            <th>Compras</th>
+                            <th>Total Gasto</th>
+                            <th>Última Compra</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div class="card">
+        <div class="card-header">
+            <h3><i class="fas fa-box"></i> Performance de Produtos</h3>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table" id="productPerformanceTable">
+                    <thead>
+                        <tr>
+                            <th>Produto</th>
+                            <th>Qtd Vendida</th>
+                            <th>Receita</th>
+                            <th>Margem</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+function getFilters() {
+    const start = document.getElementById('startDate').value;
+    const end = document.getElementById('endDate').value;
+    const params = new URLSearchParams();
+    if (start) params.set('start_date', start);
+    if (end) params.set('end_date', end);
+    return params;
+}
+
+async function loadFinanceData() {
+    const params = getFilters();
+    
+    // Summary
+    const sumRes = await fetch(`/api/finance/summary?${params}`);
+    const sum = await sumRes.json();
+    document.getElementById('finTotalRevenue').textContent = 'R$ ' + sum.total_revenue.toFixed(2).replace('.', ',');
+    document.getElementById('finTotalPaid').textContent = 'R$ ' + sum.total_paid.toFixed(2).replace('.', ',');
+    document.getElementById('finTotalPending').textContent = 'R$ ' + sum.total_pending.toFixed(2).replace('.', ',');
+    document.getElementById('finTotalCancelled').textContent = 'R$ ' + sum.total_cancelled.toFixed(2).replace('.', ',');
+    
+    loadRevenueChart();
+    loadPaymentChart();
+    loadCustomerReport();
+    loadProductPerformance();
+    
+    // Show average ticket and other stats
+}
+
+let finRevenueChart = null;
+async function loadRevenueChart() {
+    const period = document.getElementById('finPeriod').value;
+    const params = getFilters();
+    params.set('period', period);
+    
+    const res = await fetch(`/api/finance/revenue-by-period?${params}`);
+    const data = await res.json();
+    
+    const labels = data.map(d => {
+        const date = new Date(d.period + 'T00:00:00');
+        return date.toLocaleDateString('pt-BR');
+    });
+    const values = data.map(d => d.total);
+
+    if (finRevenueChart) finRevenueChart.destroy();
+    const ctx = document.getElementById('financeRevenueChart').getContext('2d');
+    finRevenueChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Receita',
+                data: values,
+                backgroundColor: '#3498db',
+                borderRadius: 6,
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: { legend: { display: false } },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: { callback: v => 'R$ ' + v.toFixed(2).replace('.', ',') }
+                }
+            }
+        }
+    });
+}
+
+let finPaymentChart = null;
+async function loadPaymentChart() {
+    const params = getFilters();
+    const res = await fetch(`/api/finance/payment-methods?${params}`);
+    const data = await res.json();
+
+    const labels = data.map(d => {
+        const map = { cash: 'Dinheiro', credit_card: 'Cartão Crédito', debit_card: 'Cartão Débito', pix: 'PIX', transfer: 'Transferência', other: 'Outros' };
+        return map[d.payment_method] || d.payment_method;
+    });
+    const values = data.map(d => d.total);
+    const colors = ['#2ecc71', '#3498db', '#e74c3c', '#f39c12', '#9b59b6', '#1abc9c'];
+
+    if (finPaymentChart) finPaymentChart.destroy();
+    const ctx = document.getElementById('financePaymentChart').getContext('2d');
+    finPaymentChart = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: labels,
+            datasets: [{
+                data: values,
+                backgroundColor: colors.slice(0, labels.length),
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: { legend: { display: false } }
+        }
+    });
+
+    const legend = document.getElementById('financePaymentLegend');
+    legend.innerHTML = labels.map((l, i) =>
+        `<span class="legend-item"><span class="legend-color" style="background:${colors[i]}"></span>${l}</span>`
+    ).join('');
+}
+
+async function loadCustomerReport() {
+    const res = await fetch('/api/finance/customer-report?min_purchases=1');
+    const data = await res.json();
+    const tbody = document.querySelector('#customerReportTable tbody');
+    tbody.innerHTML = data.map(c =>
+        `<tr>
+            <td>${c.customer_name}</td>
+            <td>${c.total_sales}</td>
+            <td>R$ ${c.total_spent.toFixed(2).replace('.', ',')}</td>
+            <td>${c.last_purchase ? new Date(c.last_purchase + 'T00:00:00').toLocaleDateString('pt-BR') : '-'}</td>
+        </tr>`
+    ).join('');
+}
+
+async function loadProductPerformance() {
+    const params = getFilters();
+    const res = await fetch(`/api/finance/product-performance?${params}`);
+    const data = await res.json();
+    const tbody = document.querySelector('#productPerformanceTable tbody');
+    tbody.innerHTML = data.map(p =>
+        `<tr>
+            <td>${p.product_name}</td>
+            <td>${p.total_sold}</td>
+            <td>R$ ${p.total_revenue.toFixed(2).replace('.', ',')}</td>
+            <td>${p.profit_margin !== null ? p.profit_margin.toFixed(1) + '%' : '-'}</td>
+        </tr>`
+    ).join('');
+}
+
+function generateReport(type) {
+    const params = getFilters();
+    let url = `/api/finance/summary?${params}`;
+    
+    if (type === 'csv') {
+        // Generate CSV from current data on screen
+        let csv = 'Relatório Financeiro\n\n';
+        csv += 'Indicador,Valor\n';
+        csv += `Receita Total,${document.getElementById('finTotalRevenue').textContent}\n`;
+        csv += `Recebido,${document.getElementById('finTotalPaid').textContent}\n`;
+        csv += `A Receber,${document.getElementById('finTotalPending').textContent}\n`;
+        csv += `Cancelado,${document.getElementById('finTotalCancelled').textContent}\n\n`;
+        
+        csv += 'Clientes\n';
+        csv += 'Nome,Compras,Total Gasto,Última Compra\n';
+        document.querySelectorAll('#customerReportTable tbody tr').forEach(row => {
+            const cells = row.querySelectorAll('td');
+            csv += `${cells[0].textContent},${cells[1].textContent},${cells[2].textContent},${cells[3].textContent}\n`;
+        });
+        
+        csv += '\nProdutos\n';
+        csv += 'Produto,Qtd Vendida,Receita,Margem\n';
+        document.querySelectorAll('#productPerformanceTable tbody tr').forEach(row => {
+            const cells = row.querySelectorAll('td');
+            csv += `${cells[0].textContent},${cells[1].textContent},${cells[2].textContent},${cells[3].textContent}\n`;
+        });
+        
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = `relatorio_financeiro_${new Date().toISOString().split('T')[0]}.csv`;
+        link.click();
+    } else {
+        // Print-friendly report
+        window.open('/finance', '_blank');
+        setTimeout(() => window.print(), 500);
+    }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    const today = new Date();
+    const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+    document.getElementById('startDate').value = firstDay.toISOString().split('T')[0];
+    document.getElementById('endDate').value = today.toISOString().split('T')[0];
+    loadFinanceData();
+});
+</script>
+{% endblock %}

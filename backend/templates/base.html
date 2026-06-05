@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Sistema Rural{% endblock %}</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+</head>
+<body>
+    <div class="app-container">
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h2><i class="fas fa-tractor"></i> RuralSys</h2>
+            </div>
+            <nav class="sidebar-nav">
+                <a href="/" class="nav-item {% if active_page == 'dashboard' %}active{% endif %}">
+                    <i class="fas fa-chart-pie"></i> Dashboard
+                </a>
+                <a href="/inventory" class="nav-item {% if active_page == 'inventory' %}active{% endif %}">
+                    <i class="fas fa-boxes"></i> Inventário
+                </a>
+                <a href="/materials" class="nav-item {% if active_page == 'materials' %}active{% endif %}">
+                    <i class="fas fa-cubes"></i> Matérias-Primas
+                </a>
+                <a href="/sales" class="nav-item {% if active_page == 'sales' %}active{% endif %}">
+                    <i class="fas fa-shopping-cart"></i> Vendas
+                </a>
+                <a href="/customers" class="nav-item {% if active_page == 'customers' %}active{% endif %}">
+                    <i class="fas fa-users"></i> Clientes
+                </a>
+                <a href="/finance" class="nav-item {% if active_page == 'finance' %}active{% endif %}">
+                    <i class="fas fa-dollar-sign"></i> Financeiro
+                </a>
+            </nav>
+            <div class="sidebar-footer" style="padding: 1rem 1.5rem; border-top: 1px solid rgba(255,255,255,0.1); margin-top: auto;">
+                <a href="/logout" class="nav-item" style="color: #e74c3c;">
+                    <i class="fas fa-sign-out-alt"></i> Sair
+                </a>
+            </div>
+        </aside>
+        <main class="main-content">
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+    <script src="/static/script.js"></script>
+    {% block extra_scripts %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,162 @@
+{% extends "base.html" %}
+{% block title %}Clientes - RuralSys{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1><i class="fas fa-users"></i> Clientes</h1>
+    <button class="btn btn-primary" onclick="openCustomerModal()">
+        <i class="fas fa-plus"></i> Novo Cliente
+    </button>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <div class="table-toolbar">
+            <input type="text" id="customerSearch" placeholder="Buscar por nome ou email..." oninput="loadCustomers()">
+        </div>
+        <div class="table-responsive">
+            <table class="table" id="customersTable">
+                <thead>
+                    <tr>
+                        <th>Nome</th>
+                        <th>Email</th>
+                        <th>Telefone</th>
+                        <th>Cidade</th>
+                        <th>Total Compras</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Customer Modal -->
+<div class="modal" id="customerModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 id="customerModalTitle">Novo Cliente</h3>
+            <button class="close-btn" onclick="closeModal('customerModal')">&times;</button>
+        </div>
+        <form id="customerForm" onsubmit="saveCustomer(event)">
+            <input type="hidden" id="customerId">
+            <div class="form-group">
+                <label>Nome *</label>
+                <input type="text" id="custName" required>
+            </div>
+            <div class="form-group">
+                <label>Email *</label>
+                <input type="email" id="custEmail" required>
+            </div>
+            <div class="form-group">
+                <label>Telefone</label>
+                <input type="text" id="custPhone" placeholder="(99) 99999-9999">
+            </div>
+            <div class="form-group">
+                <label>Endereço</label>
+                <input type="text" id="custAddress">
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Cidade</label>
+                    <input type="text" id="custCity">
+                </div>
+                <div class="form-group">
+                    <label>Estado</label>
+                    <input type="text" id="custState" placeholder="SP" maxlength="2">
+                </div>
+                <div class="form-group">
+                    <label>CEP</label>
+                    <input type="text" id="custZip">
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Observações</label>
+                <textarea id="custNotes" rows="3"></textarea>
+            </div>
+            <div class="form-actions">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('customerModal')">Cancelar</button>
+                <button type="submit" class="btn btn-primary">Salvar</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+async function loadCustomers() {
+    const search = document.getElementById('customerSearch').value;
+    const res = await fetch(`/api/customers/?search=${encodeURIComponent(search)}`);
+    const data = await res.json();
+    const tbody = document.querySelector('#customersTable tbody');
+    tbody.innerHTML = data.map(c =>
+        `<tr>
+            <td>${c.name}</td>
+            <td>${c.email}</td>
+            <td>${c.phone || '-'}</td>
+            <td>${c.city || '-'}</td>
+            <td><span class="badge badge-info">${c.sales ? c.sales.length : 0}</span></td>
+            <td class="actions">
+                <button class="btn btn-sm btn-secondary" onclick="editCustomer(${c.id})"><i class="fas fa-edit"></i></button>
+                <button class="btn btn-sm btn-danger" onclick="deleteCustomer(${c.id})"><i class="fas fa-trash"></i></button>
+            </td>
+        </tr>`
+    ).join('');
+}
+
+function openCustomerModal(data = null) {
+    document.getElementById('customerModalTitle').textContent = data ? 'Editar Cliente' : 'Novo Cliente';
+    document.getElementById('customerId').value = data ? data.id : '';
+    document.getElementById('custName').value = data ? data.name : '';
+    document.getElementById('custEmail').value = data ? data.email : '';
+    document.getElementById('custPhone').value = data ? (data.phone || '') : '';
+    document.getElementById('custAddress').value = data ? (data.address || '') : '';
+    document.getElementById('custCity').value = data ? (data.city || '') : '';
+    document.getElementById('custState').value = data ? (data.state || '') : '';
+    document.getElementById('custZip').value = data ? (data.zip_code || '') : '';
+    document.getElementById('custNotes').value = data ? (data.notes || '') : '';
+    document.getElementById('customerModal').style.display = 'flex';
+}
+
+async function editCustomer(id) {
+    const res = await fetch(`/api/customers/${id}`);
+    const data = await res.json();
+    openCustomerModal(data);
+}
+
+async function saveCustomer(event) {
+    event.preventDefault();
+    const id = document.getElementById('customerId').value;
+    const data = {
+        name: document.getElementById('custName').value,
+        email: document.getElementById('custEmail').value,
+        phone: document.getElementById('custPhone').value || null,
+        address: document.getElementById('custAddress').value || null,
+        city: document.getElementById('custCity').value || null,
+        state: document.getElementById('custState').value || null,
+        zip_code: document.getElementById('custZip').value || null,
+        notes: document.getElementById('custNotes').value || null,
+    };
+    
+    const url = id ? `/api/customers/${id}` : '/api/customers/';
+    const method = id ? 'PUT' : 'POST';
+    
+    try {
+        await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+        closeModal('customerModal');
+        loadCustomers();
+    } catch (e) {
+        alert('Erro ao salvar cliente. Verifique se o email já está cadastrado.');
+    }
+}
+
+async function deleteCustomer(id) {
+    if (!confirm('Tem certeza que deseja excluir este cliente?')) return;
+    await fetch(`/api/customers/${id}`, { method: 'DELETE' });
+    loadCustomers();
+}
+
+document.addEventListener('DOMContentLoaded', loadCustomers);
+</script>
+{% endblock %}

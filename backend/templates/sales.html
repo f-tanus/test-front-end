@@ -1,0 +1,321 @@
+{% extends "base.html" %}
+{% block title %}Vendas - RuralSys{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1><i class="fas fa-shopping-cart"></i> Vendas</h1>
+    <button class="btn btn-primary" onclick="openSaleModal()">
+        <i class="fas fa-plus"></i> Nova Venda
+    </button>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <div class="table-toolbar">
+            <input type="text" id="saleSearch" placeholder="Buscar por cliente..." oninput="loadSales()">
+            <select id="statusFilter" onchange="loadSales()">
+                <option value="">Todos os status</option>
+                <option value="pending">Pendente</option>
+                <option value="paid">Pago</option>
+                <option value="partially_paid">Parcial</option>
+                <option value="cancelled">Cancelado</option>
+            </select>
+        </div>
+        <div class="table-responsive">
+            <table class="table" id="salesTable">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Cliente</th>
+                        <th>Data</th>
+                        <th>Valor Total</th>
+                        <th>Status</th>
+                        <th>Pagamento</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Sale Modal -->
+<div class="modal" id="saleModal">
+    <div class="modal-content modal-lg">
+        <div class="modal-header">
+            <h3 id="saleModalTitle">Nova Venda</h3>
+            <button class="close-btn" onclick="closeModal('saleModal')">&times;</button>
+        </div>
+        <form id="saleForm" onsubmit="saveSale(event)">
+            <input type="hidden" id="saleId">
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Cliente</label>
+                    <select id="saleCustomer">
+                        <option value="">Cliente Avulso</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Data da Venda *</label>
+                    <input type="date" id="saleDate" required>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Status do Pagamento</label>
+                    <select id="saleStatus">
+                        <option value="pending">Pendente</option>
+                        <option value="paid">Pago</option>
+                        <option value="partially_paid">Parcialmente Pago</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Método de Pagamento</label>
+                    <select id="saleMethod">
+                        <option value="cash">Dinheiro</option>
+                        <option value="credit_card">Cartão de Crédito</option>
+                        <option value="debit_card">Cartão de Débito</option>
+                        <option value="pix">PIX</option>
+                        <option value="transfer">Transferência</option>
+                        <option value="other">Outros</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Observações</label>
+                <textarea id="saleNotes" rows="2"></textarea>
+            </div>
+            <div class="card" style="margin-top: 1rem;">
+                <div class="card-header">
+                    <h4><i class="fas fa-box"></i> Itens da Venda</h4>
+                    <button type="button" class="btn btn-sm btn-secondary" onclick="addSaleItemRow()">
+                        <i class="fas fa-plus"></i> Adicionar Item
+                    </button>
+                </div>
+                <div class="card-body">
+                    <table class="table" id="saleItemsTable">
+                        <thead>
+                            <tr>
+                                <th>Produto</th>
+                                <th>Quantidade</th>
+                                <th>Preço Unit.</th>
+                                <th>Subtotal</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                        <tfoot>
+                            <tr>
+                                <td colspan="3" class="text-right"><strong>Total:</strong></td>
+                                <td><strong id="saleTotalDisplay">R$ 0,00</strong></td>
+                                <td></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+            <div class="form-actions">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('saleModal')">Cancelar</button>
+                <button type="submit" class="btn btn-primary">Salvar Venda</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+let productsCache = [];
+let customersCache = [];
+
+async function loadCustomers() {
+    const res = await fetch('/api/customers/');
+    customersCache = await res.json();
+    const select = document.getElementById('saleCustomer');
+    select.innerHTML = '<option value="">Cliente Avulso</option>' + 
+        customersCache.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+}
+
+async function loadProducts() {
+    const res = await fetch('/api/products/?search=&category=');
+    productsCache = await res.json();
+}
+
+function addSaleItemRow(productId = '', qty = '1', price = '') {
+    const tbody = document.querySelector('#saleItemsTable tbody');
+    const row = document.createElement('tr');
+    row.innerHTML = `
+        <td>
+            <select class="item-product" onchange="updateSubtotal(this.closest('tr'))" required>
+                <option value="">Selecione...</option>
+                ${productsCache.filter(p => p.is_active).map(p => 
+                    `<option value="${p.id}" data-price="${p.sale_price}" ${p.id == productId ? 'selected' : ''}>${p.name}</option>`
+                ).join('')}
+            </select>
+        </td>
+        <td>
+            <input type="number" class="item-qty" step="0.01" min="0.01" value="${qty}" onchange="updateSubtotal(this.closest('tr'))" required>
+        </td>
+        <td>
+            <input type="number" class="item-price" step="0.01" min="0" value="${price}" onchange="updateSubtotal(this.closest('tr'))" required>
+        </td>
+        <td class="item-subtotal">R$ 0,00</td>
+        <td><button type="button" class="btn btn-sm btn-danger" onclick="this.closest('tr').remove(); updateTotal();"><i class="fas fa-times"></i></button></td>
+    `;
+    tbody.appendChild(row);
+    updateSubtotal(row);
+}
+
+function updateSubtotal(row) {
+    const select = row.querySelector('.item-product');
+    const qty = parseFloat(row.querySelector('.item-qty').value) || 0;
+    const priceInput = row.querySelector('.item-price');
+    
+    if (!priceInput.value && select.selectedIndex > 0) {
+        const opt = select.options[select.selectedIndex];
+        priceInput.value = opt.dataset.price;
+    }
+    
+    const price = parseFloat(priceInput.value) || 0;
+    const subtotal = qty * price;
+    row.querySelector('.item-subtotal').textContent = 'R$ ' + subtotal.toFixed(2).replace('.', ',');
+    updateTotal();
+}
+
+function updateTotal() {
+    const rows = document.querySelectorAll('#saleItemsTable tbody tr');
+    let total = 0;
+    rows.forEach(row => {
+        const qty = parseFloat(row.querySelector('.item-qty').value) || 0;
+        const price = parseFloat(row.querySelector('.item-price').value) || 0;
+        total += qty * price;
+    });
+    document.getElementById('saleTotalDisplay').textContent = 'R$ ' + total.toFixed(2).replace('.', ',');
+}
+
+async function loadSales() {
+    const search = document.getElementById('saleSearch').value;
+    const status = document.getElementById('statusFilter').value;
+    const params = new URLSearchParams();
+    if (search) params.set('search', search);
+    if (status) params.set('status', status);
+    
+    const res = await fetch(`/api/sales/?${params}`);
+    const data = await res.json();
+    const tbody = document.querySelector('#salesTable tbody');
+    
+    const statusMap = { pending: 'Pendente', paid: 'Pago', partially_paid: 'Parcial', cancelled: 'Cancelado' };
+    const methodMap = { cash: 'Dinheiro', credit_card: 'Cartão Crédito', debit_card: 'Cartão Débito', pix: 'PIX', transfer: 'Transferência', other: 'Outros' };
+    
+    tbody.innerHTML = data.map(s =>
+        `<tr>
+            <td>#${s.id}</td>
+            <td>${s.customer_name}</td>
+            <td>${new Date(s.sale_date + 'T00:00:00').toLocaleDateString('pt-BR')}</td>
+            <td>R$ ${s.total_amount.toFixed(2).replace('.', ',')}</td>
+            <td><span class="badge ${s.payment_status === 'paid' ? 'badge-success' : s.payment_status === 'pending' ? 'badge-warning' : s.payment_status === 'cancelled' ? 'badge-danger' : 'badge-info'}">${statusMap[s.payment_status] || s.payment_status}</span></td>
+            <td>${methodMap[s.payment_method] || s.payment_method}</td>
+            <td class="actions">
+                <button class="btn btn-sm btn-secondary" onclick="viewSale(${s.id})"><i class="fas fa-eye"></i></button>
+                <button class="btn btn-sm btn-danger" onclick="deleteSale(${s.id})"><i class="fas fa-trash"></i></button>
+            </td>
+        </tr>`
+    ).join('');
+}
+
+function openSaleModal() {
+    document.getElementById('saleModalTitle').textContent = 'Nova Venda';
+    document.getElementById('saleId').value = '';
+    document.getElementById('saleDate').value = new Date().toISOString().split('T')[0];
+    document.getElementById('saleStatus').value = 'pending';
+    document.getElementById('saleMethod').value = 'cash';
+    document.getElementById('saleNotes').value = '';
+    document.getElementById('saleCustomer').value = '';
+    const tbody = document.querySelector('#saleItemsTable tbody');
+    tbody.innerHTML = '';
+    addSaleItemRow();
+    document.getElementById('saleModal').style.display = 'flex';
+}
+
+async function viewSale(id) {
+    const res = await fetch(`/api/sales/${id}`);
+    const data = await res.json();
+    document.getElementById('saleModalTitle').textContent = `Venda #${data.id}`;
+    document.getElementById('saleId').value = data.id;
+    document.getElementById('saleDate').value = data.sale_date;
+    document.getElementById('saleStatus').value = data.payment_status;
+    document.getElementById('saleMethod').value = data.payment_method;
+    document.getElementById('saleNotes').value = data.notes || '';
+    document.getElementById('saleCustomer').value = data.customer_id || '';
+    
+    const tbody = document.querySelector('#saleItemsTable tbody');
+    tbody.innerHTML = '';
+    data.items.forEach(item => addSaleItemRow(item.product_id, item.quantity, item.unit_price));
+    document.getElementById('saleModal').style.display = 'flex';
+}
+
+async function saveSale(event) {
+    event.preventDefault();
+    const id = document.getElementById('saleId').value;
+    
+    const itemRows = document.querySelectorAll('#saleItemsTable tbody tr');
+    const items = [];
+    itemRows.forEach(row => {
+        const productId = row.querySelector('.item-product').value;
+        const qty = parseFloat(row.querySelector('.item-qty').value) || 0;
+        const price = parseFloat(row.querySelector('.item-price').value) || 0;
+        if (productId) {
+            items.push({ product_id: parseInt(productId), quantity: qty, unit_price: price });
+        }
+    });
+
+    const data = {
+        customer_id: document.getElementById('saleCustomer').value ? parseInt(document.getElementById('saleCustomer').value) : null,
+        sale_date: document.getElementById('saleDate').value,
+        payment_status: document.getElementById('saleStatus').value,
+        payment_method: document.getElementById('saleMethod').value,
+        notes: document.getElementById('saleNotes').value || null,
+        items: items,
+    };
+    
+    const url = id ? `/api/sales/${id}` : '/api/sales/';
+    const method = id ? 'PUT' : 'POST';
+    
+    try {
+        const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+        if (!res.ok) {
+            const err = await res.json();
+            showError(err.detail || 'Erro ao salvar venda');
+            return;
+        }
+        closeModal('saleModal');
+        showSuccess(id ? 'Venda atualizada com sucesso!' : 'Venda registrada com sucesso!');
+        loadSales();
+    } catch (e) {
+        showError('Erro ao salvar venda: ' + e.message);
+    }
+}
+
+async function deleteSale(id) {
+    if (!confirm('Tem certeza que deseja excluir esta venda?')) return;
+    try {
+        const res = await fetch(`/api/sales/${id}`, { method: 'DELETE' });
+        if (!res.ok) {
+            const err = await res.json();
+            showError(err.detail || 'Erro ao excluir venda');
+            return;
+        }
+        showSuccess('Venda excluída com sucesso!');
+        loadSales();
+    } catch (e) {
+        showError('Erro ao excluir venda: ' + e.message);
+    }
+}
+
+document.addEventListener('DOMContentLoaded', async () => {
+    await loadCustomers();
+    await loadProducts();
+    loadSales();
+});
+</script>
+{% endblock %}

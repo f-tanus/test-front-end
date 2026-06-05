@@ -1,0 +1,246 @@
+{% extends "base.html" %}
+{% block title %}Inventário - RuralSys{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1><i class="fas fa-boxes"></i> Inventário</h1>
+    <button class="btn btn-primary" onclick="openProductModal()">
+        <i class="fas fa-plus"></i> Novo Produto
+    </button>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <div class="table-toolbar">
+            <input type="text" id="productSearch" placeholder="Buscar produto..." oninput="loadProducts()">
+            <select id="categoryFilter" onchange="loadProducts()">
+                <option value="">Todas as categorias</option>
+            </select>
+        </div>
+        <div class="table-responsive">
+            <table class="table" id="productsTable">
+                <thead>
+                    <tr>
+                        <th>Nome</th>
+                        <th>Categoria</th>
+                        <th>Preço Venda</th>
+                        <th>Custo Matéria-Prima</th>
+                        <th>Margem</th>
+                        <th>Ativo</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Product Modal -->
+<div class="modal" id="productModal">
+    <div class="modal-content modal-lg">
+        <div class="modal-header">
+            <h3 id="productModalTitle">Novo Produto</h3>
+            <button class="close-btn" onclick="closeModal('productModal')">&times;</button>
+        </div>
+        <form id="productForm" onsubmit="saveProduct(event)">
+            <input type="hidden" id="productId">
+            <div class="form-group">
+                <label>Nome *</label>
+                <input type="text" id="prodName" required>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Categoria</label>
+                    <input type="text" id="prodCategory" placeholder="Ex: Artesanato, Alimentos, etc">
+                </div>
+                <div class="form-group">
+                    <label>Preço de Venda (R$) *</label>
+                    <input type="number" id="prodPrice" step="0.01" min="0" required>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Custo Mão de Obra (R$)</label>
+                    <input type="number" id="prodLabor" step="0.01" min="0" value="0">
+                </div>
+                <div class="form-group">
+                    <label>Margem de Lucro (%)</label>
+                    <input type="number" id="prodMarkup" step="0.1" min="0" value="30">
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Descrição</label>
+                <textarea id="prodDesc" rows="3"></textarea>
+            </div>
+            <div class="form-group">
+                <label>Observações</label>
+                <textarea id="prodNotes" rows="2"></textarea>
+            </div>
+            <div class="card" style="margin-top: 1rem;">
+                <div class="card-header">
+                    <h4><i class="fas fa-cubes"></i> Matérias-Primas Necessárias</h4>
+                    <button type="button" class="btn btn-sm btn-secondary" onclick="addMaterialRow()">
+                        <i class="fas fa-plus"></i> Adicionar
+                    </button>
+                </div>
+                <div class="card-body">
+                    <table class="table" id="productMaterialsTable">
+                        <thead>
+                            <tr>
+                                <th>Matéria-Prima</th>
+                                <th>Quantidade</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="form-actions">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('productModal')">Cancelar</button>
+                <button type="submit" class="btn btn-primary">Salvar</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+let materialsCache = [];
+
+async function loadMaterials() {
+    const res = await fetch('/api/materials/');
+    materialsCache = await res.json();
+    return materialsCache;
+}
+
+function addMaterialRow(materialId = '', quantity = '1') {
+    const tbody = document.querySelector('#productMaterialsTable tbody');
+    const row = document.createElement('tr');
+    row.innerHTML = `
+        <td>
+            <select class="mat-select" required>
+                <option value="">Selecione...</option>
+                ${materialsCache.map(m => `<option value="${m.id}" ${m.id == materialId ? 'selected' : ''}>${m.name} (${m.unit})</option>`).join('')}
+            </select>
+        </td>
+        <td>
+            <input type="number" class="mat-qty" step="0.001" min="0.001" value="${quantity}" required>
+        </td>
+        <td><button type="button" class="btn btn-sm btn-danger" onclick="this.closest('tr').remove()"><i class="fas fa-times"></i></button></td>
+    `;
+    tbody.appendChild(row);
+}
+
+async function loadProducts() {
+    const search = document.getElementById('productSearch').value;
+    const category = document.getElementById('categoryFilter').value;
+    const params = new URLSearchParams();
+    if (search) params.set('search', search);
+    if (category) params.set('category', category);
+    
+    const res = await fetch(`/api/products/?${params}`);
+    const data = await res.json();
+    const tbody = document.querySelector('#productsTable tbody');
+    tbody.innerHTML = data.map(p =>
+        `<tr>
+            <td>${p.name}</td>
+            <td>${p.category || '-'}</td>
+            <td>R$ ${p.sale_price.toFixed(2).replace('.', ',')}</td>
+            <td>R$ ${p.materials_cost ? p.materials_cost.toFixed(2).replace('.', ',') : '0,00'}</td>
+            <td><span class="badge ${p.profit_margin >= 30 ? 'badge-success' : p.profit_margin > 0 ? 'badge-warning' : 'badge-danger'}">${p.profit_margin.toFixed(1)}%</span></td>
+            <td><span class="badge ${p.is_active ? 'badge-success' : 'badge-danger'}">${p.is_active ? 'Sim' : 'Não'}</span></td>
+            <td class="actions">
+                <button class="btn btn-sm btn-secondary" onclick="editProduct(${p.id})"><i class="fas fa-edit"></i></button>
+                <button class="btn btn-sm btn-danger" onclick="deleteProduct(${p.id})"><i class="fas fa-trash"></i></button>
+            </td>
+        </tr>`
+    ).join('');
+}
+
+async function loadCategories() {
+    const res = await fetch('/api/products/categories');
+    const data = await res.json();
+    const select = document.getElementById('categoryFilter');
+    data.forEach(c => {
+        const opt = document.createElement('option');
+        opt.value = c;
+        opt.textContent = c;
+        select.appendChild(opt);
+    });
+}
+
+function openProductModal(data = null) {
+    document.getElementById('productModalTitle').textContent = data ? 'Editar Produto' : 'Novo Produto';
+    document.getElementById('productId').value = data ? data.id : '';
+    document.getElementById('prodName').value = data ? data.name : '';
+    document.getElementById('prodCategory').value = data ? (data.category || '') : '';
+    document.getElementById('prodPrice').value = data ? data.sale_price : '';
+    document.getElementById('prodLabor').value = data ? (data.labor_cost || 0) : 0;
+    document.getElementById('prodMarkup').value = data ? (data.markup_percentage || 30) : 30;
+    document.getElementById('prodDesc').value = data ? (data.description || '') : '';
+    document.getElementById('prodNotes').value = data ? (data.notes || '') : '';
+    
+    const tbody = document.querySelector('#productMaterialsTable tbody');
+    tbody.innerHTML = '';
+    
+    if (data && data.materials) {
+        data.materials.forEach(m => addMaterialRow(m.material_id, m.quantity));
+    }
+    
+    document.getElementById('productModal').style.display = 'flex';
+}
+
+async function editProduct(id) {
+    const res = await fetch(`/api/products/${id}`);
+    const data = await res.json();
+    openProductModal(data);
+}
+
+async function saveProduct(event) {
+    event.preventDefault();
+    const id = document.getElementById('productId').value;
+    
+    const materialRows = document.querySelectorAll('#productMaterialsTable tbody tr');
+    const materials = [];
+    materialRows.forEach(row => {
+        const select = row.querySelector('.mat-select');
+        const qty = row.querySelector('.mat-qty');
+        if (select.value) {
+            materials.push({ material_id: parseInt(select.value), quantity: parseFloat(qty.value) });
+        }
+    });
+
+    const data = {
+        name: document.getElementById('prodName').value,
+        category: document.getElementById('prodCategory').value || null,
+        sale_price: parseFloat(document.getElementById('prodPrice').value),
+        labor_cost: parseFloat(document.getElementById('prodLabor').value) || 0,
+        markup_percentage: parseFloat(document.getElementById('prodMarkup').value) || 30,
+        description: document.getElementById('prodDesc').value || null,
+        notes: document.getElementById('prodNotes').value || null,
+        materials: materials,
+    };
+    
+    const url = id ? `/api/products/${id}` : '/api/products/';
+    const method = id ? 'PUT' : 'POST';
+    
+    await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+    closeModal('productModal');
+    loadProducts();
+}
+
+async function deleteProduct(id) {
+    if (!confirm('Tem certeza que deseja excluir este produto?')) return;
+    await fetch(`/api/products/${id}`, { method: 'DELETE' });
+    loadProducts();
+}
+
+document.addEventListener('DOMContentLoaded', async () => {
+    await loadMaterials();
+    loadProducts();
+    loadCategories();
+});
+</script>
+{% endblock %}

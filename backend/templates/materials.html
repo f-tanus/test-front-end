@@ -1,0 +1,161 @@
+{% extends "base.html" %}
+{% block title %}Matérias-Primas - RuralSys{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1><i class="fas fa-cubes"></i> Matérias-Primas</h1>
+    <button class="btn btn-primary" onclick="openMaterialModal()">
+        <i class="fas fa-plus"></i> Nova Matéria-Prima
+    </button>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <div class="table-toolbar">
+            <input type="text" id="materialSearch" placeholder="Buscar matéria-prima..." oninput="loadMaterials()">
+        </div>
+        <div class="table-responsive">
+            <table class="table" id="materialsTable">
+                <thead>
+                    <tr>
+                        <th>Nome</th>
+                        <th>Unidade</th>
+                        <th>Custo por Unidade</th>
+                        <th>Fornecedor</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Modal -->
+<div class="modal" id="materialModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 id="materialModalTitle">Nova Matéria-Prima</h3>
+            <button class="close-btn" onclick="closeModal('materialModal')">&times;</button>
+        </div>
+        <form id="materialForm" onsubmit="saveMaterial(event)">
+            <input type="hidden" id="materialId">
+            <div class="form-group">
+                <label>Nome *</label>
+                <input type="text" id="matName" required>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Unidade *</label>
+                    <select id="matUnit" required>
+                        <option value="">Selecione...</option>
+                        <option value="kg">Quilograma (kg)</option>
+                        <option value="g">Grama (g)</option>
+                        <option value="L">Litro (L)</option>
+                        <option value="ml">Mililitro (ml)</option>
+                        <option value="un">Unidade</option>
+                        <option value="m">Metro (m)</option>
+                        <option value="cm">Centímetro (cm)</option>
+                        <option value="cx">Caixa</option>
+                        <option value="pc">Peça</option>
+                        <option value="sac">Saco</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Custo por Unidade (R$) *</label>
+                    <input type="number" id="matCost" step="0.01" min="0" required>
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Fornecedor</label>
+                <input type="text" id="matSupplier">
+            </div>
+            <div class="form-group">
+                <label>Observações</label>
+                <textarea id="matNotes" rows="3"></textarea>
+            </div>
+            <div class="form-actions">
+                <button type="button" class="btn btn-secondary" onclick="closeModal('materialModal')">Cancelar</button>
+                <button type="submit" class="btn btn-primary">Salvar</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+async function loadMaterials() {
+    const search = document.getElementById('materialSearch').value;
+    const res = await fetch(`/api/materials/?search=${encodeURIComponent(search)}`);
+    if (!res.ok) { showError('Erro ao carregar matérias-primas'); return; }
+    const data = await res.json();
+    const tbody = document.querySelector('#materialsTable tbody');
+    tbody.innerHTML = data.map(m =>
+        `<tr>
+            <td>${m.name}</td>
+            <td>${m.unit}</td>
+            <td>R$ ${parseFloat(m.cost_per_unit).toFixed(2).replace('.', ',')}</td>
+            <td>${m.supplier || '-'}</td>
+            <td class="actions">
+                <button class="btn btn-sm btn-secondary" onclick="editMaterial(${m.id})"><i class="fas fa-edit"></i></button>
+                <button class="btn btn-sm btn-danger" onclick="deleteMaterial(${m.id})"><i class="fas fa-trash"></i></button>
+            </td>
+        </tr>`
+    ).join('');
+}
+
+function openMaterialModal(data = null) {
+    document.getElementById('materialModalTitle').textContent = data ? 'Editar Matéria-Prima' : 'Nova Matéria-Prima';
+    document.getElementById('materialId').value = data ? data.id : '';
+    document.getElementById('matName').value = data ? data.name : '';
+    document.getElementById('matUnit').value = data ? data.unit : '';
+    document.getElementById('matCost').value = data ? data.cost_per_unit : '';
+    document.getElementById('matSupplier').value = data ? (data.supplier || '') : '';
+    document.getElementById('matNotes').value = data ? (data.notes || '') : '';
+    document.getElementById('materialModal').style.display = 'flex';
+}
+
+async function editMaterial(id) {
+    const res = await fetch(`/api/materials/${id}`);
+    const data = await res.json();
+    openMaterialModal(data);
+}
+
+async function saveMaterial(event) {
+    event.preventDefault();
+    const id = document.getElementById('materialId').value;
+    const data = {
+        name: document.getElementById('matName').value,
+        unit: document.getElementById('matUnit').value,
+        cost_per_unit: parseFloat(document.getElementById('matCost').value),
+        supplier: document.getElementById('matSupplier').value || null,
+        notes: document.getElementById('matNotes').value || null,
+    };
+    
+    const url = id ? `/api/materials/${id}` : '/api/materials/';
+    const method = id ? 'PUT' : 'POST';
+    
+    try {
+        await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+        closeModal('materialModal');
+        showSuccess(id ? 'Matéria-prima atualizada com sucesso!' : 'Matéria-prima criada com sucesso!');
+        loadMaterials();
+    } catch (e) {
+        showError('Erro ao salvar matéria-prima: ' + e.message);
+    }
+}
+
+async function deleteMaterial(id) {
+    if (!confirm('Tem certeza que deseja excluir esta matéria-prima?')) return;
+    try {
+        await fetch(`/api/materials/${id}`, { method: 'DELETE' });
+        showSuccess('Matéria-prima excluída com sucesso!');
+        loadMaterials();
+    } catch (e) {
+        showError('Erro ao excluir matéria-prima: ' + e.message);
+    }
+}
+
+document.addEventListener('DOMContentLoaded', loadMaterials);
+</script>
+{% endblock %}
